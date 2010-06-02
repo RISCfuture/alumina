@@ -48,3 +48,12 @@ class Object
     value
   end
 end
+
+# @private
+class Hash
+  # @private -- credit to Trans, Jan Molic, Facets team
+  def self.autonew(*args)
+    leet = lambda { |hsh, key| hsh[key] = new( &leet ) }
+    new(*args,&leet)
+  end
+end

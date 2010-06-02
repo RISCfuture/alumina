@@ -3,6 +3,8 @@ module Alumina
   # A molecule as represented by HIN data, consisting of multiple {Atom Atoms}.
   
   class Molecule
+    include Alumina::HIN::Writer::Molecule
+    
     # @return [Fixnum] The unique numerical identifier for this molecule.
     attr_accessor :id
     # @return [String, nil] The optional label given to this molecule.
@@ -45,6 +47,8 @@ module Alumina
     def atom(ident)
       @atoms[ident]
     end
+    
+    alias :[] :atom
     
     # @return [String] Returns the plain-text molecular formula for this atom;
     # for example, @C7H5N3O6@ for TNT.

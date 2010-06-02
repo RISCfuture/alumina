@@ -3,6 +3,10 @@ module Alumina
   # An atom as part of a {Molecule}.
   
   class Atom
+    include Alumina::HIN::Writer::Atom
+    
+    BOND_TYPES = [ :single, :double, :triple, :aromatic ]
+    
     # @return [Fixnum] The unique numerical identifier assigned to the atom.
     attr_accessor :id
     # @return [String, nil] The optional label given to the atom.
@@ -15,11 +19,17 @@ module Alumina
     attr_accessor :y
     # @return [Float] The atom's _z_-coordinate in the molecule.
     attr_accessor :z
-    # @return [Array<Orbital>] The structure of electrons for this atom.
-    attr_accessor :structure
+    # @return [Hash<Atom, Symbol>] The atoms this atom is bonded to, along with
+    # the bond type.
+    attr_accessor :bonds
+    # @return [Fixnum] The partial charge.
+    attr_accessor :partial_charge
     
-    # Initializes a new atom. After initializing it you can define its orbital
-    # strucrure using the {#add_orbital} method. Atoms are added to
+    # @private
+    attr_accessor :ignored1, :ignored2
+    
+    # Initializes a new atom. After initializing it you can define its bonds
+    # strucrure using the {.bind} method. Atoms are added to
     # {Molecule Molecules} with the @<<@ method.
     #
     # @param [Fixnum] id A unique identifier for this atom. Uniqueness is not
@@ -35,35 +45,29 @@ module Alumina
       @x = x
       @y = y
       @z = z
-      @structure = Array.new
+      @bonds = Hash.new
     end
     
-    # Adds a new orbital to this atom.
+    # Binds two atoms together.
     #
-    # @overload add_orbital(orbital_string)
-    #   @param [String] orbital_string A description of the orbital; e.g., @2s@.
-    # @overload add_orbital(shell, subshell)
-    #   @param [Fixnum] shell The orbital's layer; e.g., @1@ for a 1s orbital.
-    #   @param [String, Fixnum] subshell The orbital's subshell; e.g., @p@ or
-    #   @1@ for a 3p orbital.
+    # @param [Atom] atom1 An atom to bind.
+    # @param [Atom] atom2 An atom to bind.
+    # @param [Symbol] The bond type. (See {BOND_TYPES}.)
+    # @raise [ArgumentError] If an invalid bond type is given.
     
-    def add_orbital(orbital_string_or_shell, subshell=nil)
-      shell = orbital_string_or_shell
-      if subshell.nil? then
-        matches = orbital_string_or_shell.match(/^(\d+)([spdfg])$/)
-        shell = matches[1].to_i
-        subshell = matches[2]
-      end
+    def self.bind(atom1, atom2, type)
+      raise ArgumentError, "Invalid bond type #{type.inspect}" unless BOND_TYPES.include?(type)
       
-      @structure << Orbital.for(shell, subshell)
+      atom1.bonds[atom2] = type
+      atom2.bonds[atom1] = type
     end
     
     # @private
     def inspect
       if label then
-        "#<Atom ##{id} #{label} (#{element.symbol}): #{structure.inspect}>"
+        "#<Atom ##{id} #{label} (#{element.symbol})>"
       else
-        "#<Atom ##{id} #{element.symbol}: #{structure.inspect}>"
+        "#<Atom ##{id} #{element.symbol}>"
       end
     end
   end

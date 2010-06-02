@@ -6,9 +6,21 @@ module Alumina
     # program.
   
     class Parser
-      # If @true@, does not raise {ParseError} when unknown commands are
-      # encountered.
-      attr_accessor :ignore_unknown_commands
+      # Mapping of HIN file bond types to their symbol values for the {Atom}
+      # class.
+      BOND_TYPES = {
+        's' => :single,
+        'd' => :double,
+        't' => :triple,
+        'a' => :aromatic
+      }
+      
+      # If @true@, does not raise {ParseError} when
+      #
+      # * unknown commands are encountered,
+      # * the bond count is incorrect, or
+      # * an @endmol@'s ID does not correspond to its @mol@'s ID.
+      attr_accessor :lenient
     
       # Parses HIN data and returns an array of {Molecule Molecules}.
       #
@@ -20,10 +32,12 @@ module Alumina
         @molecules = Array.new
         @current_molecule = nil
         @line_counter = 0
+        @bonds = Hash.autonew
 
         input.each_line do |line|
           @line_counter += 1
           next if line =~ /^\s*$/
+          next if line[0] == ';' # comment
           parts = line.split(/\s+/)
 
           command = parts.shift
@@ -31,10 +45,18 @@ module Alumina
           if respond_to?(method) then
             send(method, *parts)
           else
-            if ignore_unknown_commands then
-              raise ParseError.new(@line_counter, "Unknown command #{command}")
-            else
+            if lenient then
               next
+            else
+              raise ParseError.new(@line_counter, "Unknown command #{command}")
+            end
+          end
+        end
+        
+        @bonds.each do |molecule, firsts|
+          firsts.each do |atom1, lasts|
+            lasts.each do |atom2, bond_type|
+              Atom.bind molecule[atom1], molecule[atom2], BOND_TYPES[bond_type]
             end
           end
         end
@@ -59,6 +81,10 @@ module Alumina
       def parse_box(*unknowns)
         #TODO
       end
+      
+      def parse_seed(*unknowns)
+        #TODO
+      end
     
       # @private
       def parse_mol(id, label=nil)
@@ -72,27 +98,37 @@ module Alumina
     
       # @private
       def parse_endmol(id)
-        raise ParseError.new(@line_counter, "Given endmol with id #{@id}, but open molecule has ID #{@current_molecule.id}") unless id.to_i == @current_molecule.id
+        raise ParseError.new(@line_counter, "Given endmol with id #{@id}, but open molecule has ID #{@current_molecule.id}") if id.to_i != @current_molecule.id and not lenient
       
         @molecules << @current_molecule
         @current_molecule = nil
       end
 
       # @private
-      def parse_atom(id, label, symbol, ignored1, ignored2, unknown1, x, y, z, atomic_number, *structure)
+      def parse_atom(id, label, symbol, ignored1, ignored2, partial_charge, x, y, z, bond_count, *bonds)
         if @current_molecule then
           label = nil if label.blank?
-          element = ELEMENTS_BY_SYMBOL[symbol] || ELEMENTS_BY_NUMBER[atomic_number.to_i]
+          element = ELEMENTS_BY_SYMBOL[symbol]
           raise ParseError.new("Unknown element #{symbol}") unless element
         
-          begin
-            atom = Atom.new(id.to_i, element, x.to_f, y.to_f, z.to_f)
-          rescue ArgumentError
-            raise ParseError.new(@line_counter, $!.to_s) # catch bad orbitals
-          end
-        
+          atom = Atom.new(id.to_i, element, x.to_f, y.to_f, z.to_f)
           atom.label = label
-          structure.in_groups_of(2).each { |(shell, shape)| atom.add_orbital(shell.to_i, shape) }
+          atom.ignored1 = ignored1
+          atom.ignored2 = ignored2
+          atom.partial_charge = partial_charge.to_i
+          
+          bond_count = bond_count.to_i
+          raise ParseError.new(@line_counter, "Expected #{bond_count} bonds but found #{bonds.size/2}") if bond_count != bonds.size/2 and not lenient
+          
+          bonds.in_groups_of(2).each do |(atom_id, bond_type)|
+            first_id = [ atom.id, atom_id.to_i ].min
+            last_id = [ atom.id, atom_id.to_i ].max
+            if @bonds[@current_molecule][first_id][last_id] != {} and @bonds[@current_molecule][first_id][last_id] != bond_type then
+              raise ParseError.new(@line_counter, "Assymetric bond between #{first_id} and #{last_id} of type #{bond_type}")
+            end
+            raise ParseError.new(@line_counter, "Unknown bond type #{bond_type}") unless BOND_TYPES.include?(bond_type)
+            @bonds[@current_molecule][first_id][last_id] = bond_type
+          end
           @current_molecule << atom
         else
           raise ParseError.new(@line_counter, "Can't have an atom command outside of a mol section")
