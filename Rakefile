@@ -45,9 +45,19 @@ task :default => :spec
 
 begin
   require 'yard'
-  YARD::Rake::YardocTask.new
+  YARD::Rake::YardocTask.new do |doc|
+    doc.options << "-m" << "textile"
+    doc.options << "--protected"
+    doc.options << "-r" << "README.textile"
+    doc.options << "-o" << "doc"
+    doc.options << "--title" << "Alumina Documentation".inspect
+    
+    doc.files << "lib/**/*"
+  end
 rescue LoadError
-  task :yardoc do
+  task :yard do
     abort "YARD is not available. In order to run yardoc, you must: sudo gem install yard"
   end
 end
+
+task :doc => :yard
