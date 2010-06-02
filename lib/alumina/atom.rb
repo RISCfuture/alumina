@@ -62,6 +62,25 @@ module Alumina
       atom2.bonds[atom1] = type
     end
     
+    # @return [Fixnum] The number of atoms bound to this atom.
+    
+    def bond_count
+      bonds.size
+    end
+    
+    # Creates a duplicate of this atom with no bonds.
+    #
+    # @return [Atom] A duplicate of this atom.
+    
+    def dup
+      atom = Atom.new(id, element, x, y, z)
+      atom.label = label
+      atom.partial_charge = partial_charge
+      atom.ignored1 = ignored1
+      atom.ignored2 = ignored2
+      return atom
+    end
+    
     # @private
     def inspect
       if label then
