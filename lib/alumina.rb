@@ -11,8 +11,10 @@ require 'alumina/hin/parser'
 # Container module for classes of the Alumina gem.
 
 module Alumina
+  # @private
+  ELEMENTS_PATH = File.expand_path("#{File.dirname(__FILE__)}/../data/elements.yml")
   # An array of all {Element Elements}, loaded from a YAML data file.
-  ELEMENTS = YAML.load(File.read('../data/elements.yml')).map { |atomic_number, data| Element.new(atomic_number, data[:name], data[:symbol]) }
+  ELEMENTS = YAML.load(File.read(ELEMENTS_PATH)).map { |atomic_number, data| Element.new(atomic_number, data[:name], data[:symbol]) }
   # All elements hashed by their symbol (e.g., "Ag" for silver).
   ELEMENTS_BY_SYMBOL = ELEMENTS.inject({}) { |hsh, cur| hsh[cur.symbol] = cur ; hsh }
   # All elements hashed by their atomic number.
