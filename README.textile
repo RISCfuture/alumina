@@ -1,9 +1,15 @@
+h2. ⚠️ DEPRECATED
+
+*This gem is no longer maintained.* This gem parsed HyperChem/PDB chemistry files; consider modern alternatives like the @bio@ gem for general bioinformatics file parsing.
+
+----
+
 = Alumina
 
 Description goes here.
 
 == Note on Patches/Pull Requests
- 
+
 * Fork the project.
 * Make your feature addition or bug fix.
 * Add tests for it. This is important so I don't break it in a
